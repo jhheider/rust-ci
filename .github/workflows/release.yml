@@ -48,6 +48,11 @@ on:
         description: 'Formula path within the tap, e.g. Formula/edikt.rb.'
         type: string
         default: ""
+    secrets:
+      CARGO_REGISTRY_TOKEN:
+        required: false
+      HOMEBREW_TAP_TOKEN:
+        required: false
 
 env:
   CARGO_TERM_COLOR: always

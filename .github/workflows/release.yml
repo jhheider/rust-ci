@@ -67,12 +67,12 @@ env:
 
 jobs:
   build:
-    name: Build (${{ matrix.asset }})
-    runs-on: ${{ matrix.os }}
+    name: Build (${{ matrix.spec.asset }})
+    runs-on: ${{ matrix.spec.os }}
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.targets) }}
+        spec: ${{ fromJSON(inputs.targets) }}
     steps:
       # Build the tag's own code (matters on dispatch) so attached binaries
       # match the released source.
@@ -83,30 +83,30 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.toolchain }}
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.spec.target }}
 
       # musl needs its C toolchain; non-native linux-aarch64 needs a cross linker.
       - name: Install musl tools
-        if: endsWith(matrix.target, '-linux-musl')
+        if: endsWith(matrix.spec.target, '-linux-musl')
         run: sudo apt-get update && sudo apt-get install -y musl-tools
       - uses: taiki-e/setup-cross-toolchain-action@v1
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: matrix.spec.target == 'aarch64-unknown-linux-gnu'
         with:
-          target: ${{ matrix.target }}
+          target: ${{ matrix.spec.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:
-          key: ${{ matrix.target }}
+          key: ${{ matrix.spec.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.spec.target }}
 
       - name: Package
         shell: bash
         env:
           BIN: ${{ inputs.bin-name }}
-          TARGET: ${{ matrix.target }}
-          ASSET: ${{ matrix.asset }}
+          TARGET: ${{ matrix.spec.target }}
+          ASSET: ${{ matrix.spec.asset }}
           GEN_DOCS: ${{ inputs.gen-docs }}
           INCLUDE: ${{ inputs.include-files }}
         run: |
@@ -134,7 +134,7 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload '${{ github.event.release.tag_name || inputs.tag }}' '${{ matrix.asset }}' --clobber
+        run: gh release upload '${{ github.event.release.tag_name || inputs.tag }}' '${{ matrix.spec.asset }}' --clobber
 
   publish-crates:
     name: Publish to crates.io

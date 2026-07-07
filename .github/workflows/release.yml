@@ -54,11 +54,6 @@ on:
       HOMEBREW_TAP_TOKEN:
         required: false
 
-# On a release event `github.event.release.tag_name` is set; on a dispatch it is
-# empty and the caller-supplied `inputs.tag` takes over.
-concurrency:
-  group: release-${{ github.event.release.tag_name || inputs.tag }}
-
 permissions:
   contents: write
 

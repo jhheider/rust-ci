@@ -74,22 +74,28 @@ jobs:
 
 Wire it to `release: [published]`. Everything a repo does not need stays off.
 
+The caller MUST grant `permissions: contents: write` - a reusable workflow
+cannot request more permission than its caller holds. `targets` is a matrix
+object (`{"include": [...]}`).
+
 ```yaml
 name: Release
 on:
   release: { types: [published] }
+# Required: the reusable build job attaches assets to the release.
+permissions:
+  contents: write
 jobs:
   release:
     uses: jhheider/rust-ci/.github/workflows/release.yml@v1
     with:
       bin-name: govee-tui
       targets: |
-        [
+        {"include": [
           {"os":"ubuntu-latest","target":"x86_64-unknown-linux-musl","asset":"govee-tui-linux-x86_64.tar.gz"},
           {"os":"macos-latest","target":"x86_64-apple-darwin","asset":"govee-tui-macos-x86_64.tar.gz"},
           {"os":"macos-latest","target":"aarch64-apple-darwin","asset":"govee-tui-macos-aarch64.tar.gz"}
-        ]
-      publish-crates: false
+        ]}
       # gen-docs: true                 # binary supports --manpage/--completions
       # publish-crates: true
       # crates: "edikt-core edikt-syntax edikt"   # dependency order

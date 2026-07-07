@@ -5,6 +5,11 @@ name: Release
 # wire `on: release: [published]` (and optionally a workflow_dispatch that
 # passes `tag:` to rebuild an existing release). Everything a given repo does
 # not need (docs, extra files, crates, tap) stays off by default.
+#
+# IMPORTANT: the CALLER must grant `permissions: contents: write` (to attach
+# assets). A reusable workflow cannot request more permission than its caller
+# holds - declaring it here would fail to load under a read-only default token.
+# `targets` is a matrix object: {"include": [{os, target, asset}, ...]}.
 on:
   workflow_call:
     inputs:

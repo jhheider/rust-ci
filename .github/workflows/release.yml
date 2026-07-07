@@ -48,14 +48,6 @@ on:
         description: 'Formula path within the tap, e.g. Formula/edikt.rb.'
         type: string
         default: ""
-    secrets:
-      CARGO_REGISTRY_TOKEN:
-        required: false
-      HOMEBREW_TAP_TOKEN:
-        required: false
-
-permissions:
-  contents: write
 
 env:
   CARGO_TERM_COLOR: always
@@ -129,34 +121,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload '${{ github.event.release.tag_name || inputs.tag }}' '${{ matrix.asset }}' --clobber
-
-  publish-crates:
-    name: Publish to crates.io
-    needs: build
-    # Real releases only; a dispatch rebuild is for binaries + formula.
-    if: ${{ inputs.publish-crates && github.event_name == 'release' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.release.tag_name || inputs.tag }}
-      - uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ inputs.toolchain }}
-      - uses: jhheider/rust-ci/actions/publish-crates@v1
-        with:
-          crates: ${{ inputs.crates }}
-          token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-  bump-formula:
-    name: Refresh Homebrew formula
-    needs: build
-    if: ${{ inputs.tap-repo != '' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: jhheider/rust-ci/actions/bump-tap-formula@v1
-        with:
-          tag: ${{ github.event.release.tag_name || inputs.tag }}
-          tap-repo: ${{ inputs.tap-repo }}
-          formula-path: ${{ inputs.tap-formula }}
-          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}

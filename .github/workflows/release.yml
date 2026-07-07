@@ -81,12 +81,11 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           targets: ${{ matrix.target }}
 
-      # musl needs its C toolchain; non-native linux-aarch64 needs a cross linker.
-      - name: Install musl tools
-        if: endsWith(matrix.target, '-linux-musl')
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      # Cross / musl toolchains for non-native-glibc linux targets: the action
+      # installs the right linker (musl-gcc, aarch64 cross, ...). Native
+      # x86_64-unknown-linux-gnu needs nothing.
       - uses: taiki-e/setup-cross-toolchain-action@v1
-        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        if: contains(matrix.target, '-linux-') && matrix.target != 'x86_64-unknown-linux-gnu'
         with:
           target: ${{ matrix.target }}
 

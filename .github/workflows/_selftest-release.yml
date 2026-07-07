@@ -7,6 +7,11 @@ name: selftest-release
 on:
   workflow_dispatch: {}
 
+# Callers must grant what release.yml needs; the reusable does not (and cannot)
+# request more permission than the caller holds.
+permissions:
+  contents: write
+
 jobs:
   r:
     uses: ./.github/workflows/release.yml

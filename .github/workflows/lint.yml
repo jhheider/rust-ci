@@ -1,0 +1,42 @@
+name: Lint
+
+# CI for the CI repo: lint our own workflows and actions. actionlint catches
+# workflow syntax and expression errors; py_compile guards the companion
+# scripts; and we dogfood our own no-em-dash action on this repo's prose.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    name: actionlint + scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run actionlint
+        env:
+          VERSION: "1.7.12"
+        run: |
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${VERSION}/actionlint_${VERSION}_linux_amd64.tar.gz" \
+            | tar xz actionlint
+          ./actionlint -color
+      - name: Compile companion scripts
+        run: |
+          python3 -m py_compile \
+            actions/bump-tap-formula/bump-tap-formula.py \
+            actions/no-em-dash/no-em-dash.py
+
+  style:
+    name: no em-dashes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Dogfood the local action.
+      - uses: ./actions/no-em-dash
+        with:
+          skip-prefixes: "LICENSE"

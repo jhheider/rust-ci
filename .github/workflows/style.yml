@@ -1,0 +1,23 @@
+name: Style
+
+# Reusable prose gate: rejects em-dashes and en-dashes so the repo's text stays
+# plain ASCII. The check lives in the `no-em-dash` composite action (a companion
+# script, not an inline heredoc); this workflow is the turnkey wrapper. Callers
+# wire the trigger - run it on every change so docs are gated too.
+on:
+  workflow_call:
+    inputs:
+      skip-prefixes:
+        description: 'Whitespace-separated path prefixes to exempt (verbatim files like licenses, fixtures).'
+        type: string
+        default: "LICENSE"
+
+jobs:
+  no-em-dash:
+    name: no em-dashes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jhheider/rust-ci/actions/no-em-dash@v1
+        with:
+          skip-prefixes: ${{ inputs.skip-prefixes }}

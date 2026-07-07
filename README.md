@@ -1,5 +1,8 @@
 # rust-ci
 
+[![Lint](https://github.com/jhheider/rust-ci/actions/workflows/lint.yml/badge.svg)](https://github.com/jhheider/rust-ci/actions/workflows/lint.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Shared CI/CD for jhheider's Rust projects: reusable GitHub Actions **workflows**
 and composite **actions**, so every repo runs the same fmt/clippy/test/audit/
 release logic and improvements propagate from one place. Only the choices that

@@ -2,8 +2,9 @@ name: Release
 
 # Reusable release: build a binary per target, attach to the GitHub Release,
 # then optionally publish crates and refresh a Homebrew tap formula. Callers
-# wire `on: release: [published]` and pass the target matrix; everything a
-# given repo does not need (docs, crates, tap) stays off by default.
+# wire `on: release: [published]` (and optionally a workflow_dispatch that
+# passes `tag:` to rebuild an existing release). Everything a given repo does
+# not need (docs, extra files, crates, tap) stays off by default.
 on:
   workflow_call:
     inputs:
@@ -15,6 +16,10 @@ on:
         description: 'JSON array of {os, target, asset} objects, one per build.'
         type: string
         required: true
+      tag:
+        description: 'Release tag override for workflow_dispatch rebuilds. Empty on release events (the event supplies it).'
+        type: string
+        default: ""
       toolchain:
         description: 'Rust toolchain to build with.'
         type: string
@@ -23,8 +28,12 @@ on:
         description: 'Generate a man page and shell completions into the archive (binary must support --manpage/--completions).'
         type: boolean
         default: false
+      include-files:
+        description: 'Extra files to bundle into each archive (space-separated, e.g. "README.md LICENSE").'
+        type: string
+        default: ""
       publish-crates:
-        description: 'Publish workspace crates to crates.io after the builds.'
+        description: 'Publish workspace crates to crates.io after the builds (real releases only; skipped on dispatch).'
         type: boolean
         default: false
       crates:
@@ -45,8 +54,10 @@ on:
       HOMEBREW_TAP_TOKEN:
         required: false
 
+# On a release event `github.event.release.tag_name` is set; on a dispatch it is
+# empty and the caller-supplied `inputs.tag` takes over.
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
 
 permissions:
   contents: write
@@ -63,9 +74,11 @@ jobs:
       matrix:
         include: ${{ fromJSON(inputs.targets) }}
     steps:
-      # release: published checks out the tag's commit by default, so the
-      # attached binaries match the released source.
+      # Build the tag's own code (matters on dispatch) so attached binaries
+      # match the released source.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
 
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -95,14 +108,16 @@ jobs:
           TARGET: ${{ matrix.target }}
           ASSET: ${{ matrix.asset }}
           GEN_DOCS: ${{ inputs.gen-docs }}
+          INCLUDE: ${{ inputs.include-files }}
         run: |
           set -euo pipefail
           bin="target/$TARGET/release/$BIN"
           staging="stage"
           mkdir -p "$staging"
+          for f in $INCLUDE; do cp "$f" "$staging/" 2>/dev/null || true; done
           if [[ "$ASSET" == *.zip ]]; then
             cp "$bin.exe" "$staging/"
-            7z a "$GITHUB_WORKSPACE/$ASSET" "./$staging/$BIN.exe"
+            (cd "$staging" && 7z a "$GITHUB_WORKSPACE/$ASSET" .)
           else
             cp "$bin" "$staging/"
             strip "$staging/$BIN" || true
@@ -119,15 +134,18 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload '${{ github.event.release.tag_name }}' '${{ matrix.asset }}' --clobber
+        run: gh release upload '${{ github.event.release.tag_name || inputs.tag }}' '${{ matrix.asset }}' --clobber
 
   publish-crates:
     name: Publish to crates.io
     needs: build
-    if: ${{ inputs.publish-crates }}
+    # Real releases only; a dispatch rebuild is for binaries + formula.
+    if: ${{ inputs.publish-crates && github.event_name == 'release' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ inputs.toolchain }}
@@ -144,7 +162,7 @@ jobs:
     steps:
       - uses: jhheider/rust-ci/actions/bump-tap-formula@v1
         with:
-          tag: ${{ github.event.release.tag_name }}
+          tag: ${{ github.event.release.tag_name || inputs.tag }}
           tap-repo: ${{ inputs.tap-repo }}
           formula-path: ${{ inputs.tap-formula }}
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}

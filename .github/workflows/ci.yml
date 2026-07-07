@@ -1,0 +1,94 @@
+name: CI
+
+# Reusable fmt + clippy + test (+ optional coverage) for a Rust workspace.
+# Deliberately has NO separate `cargo check` job: `cargo clippy --all-targets`
+# with `-D warnings` compiles everything check would and then some, so a check
+# job is pure wasted runner minutes.
+on:
+  workflow_call:
+    inputs:
+      os:
+        description: 'JSON array of runner OSes for the test matrix.'
+        type: string
+        default: '["ubuntu-latest","macos-latest","windows-latest"]'
+      toolchain:
+        description: 'Rust toolchain (stable, nightly, 1.79.0, ...).'
+        type: string
+        default: "stable"
+      rustflags:
+        description: 'RUSTFLAGS for the clippy compile. Keep it lint-clean; do not add -A escapes - fix the code instead.'
+        type: string
+        default: "-D warnings"
+      clippy-args:
+        description: 'Arguments to `cargo clippy`.'
+        type: string
+        default: "--workspace --all-targets --all-features"
+      test-args:
+        description: 'Arguments to `cargo test`.'
+        type: string
+        default: "--workspace --all-features"
+      coverage:
+        description: 'Run cargo-llvm-cov and upload to Coveralls (advisory).'
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: rustfmt
+          cache: "false"
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: clippy
+      - run: cargo clippy ${{ inputs.clippy-args }}
+        env:
+          RUSTFLAGS: ${{ inputs.rustflags }}
+
+  test:
+    name: Test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(inputs.os) }}
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+      - run: cargo test ${{ inputs.test-args }}
+
+  coverage:
+    name: Coverage
+    if: ${{ inputs.coverage }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: llvm-tools-preview
+          shared-key: coverage
+      - uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Generate coverage report
+        run: |
+          mkdir -p coverage
+          cargo llvm-cov --workspace --all-features --lcov --output-path coverage/lcov.info
+      # Advisory: a Coveralls outage or an un-enrolled repo must not redden CI.
+      - uses: coverallsapp/github-action@v2
+        with:
+          path-to-lcov: coverage/lcov.info
+          fail-on-error: false

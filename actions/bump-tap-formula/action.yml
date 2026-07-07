@@ -1,0 +1,40 @@
+name: "Bump Homebrew tap formula"
+description: "Retag URLs and recompute shas in a binary Homebrew formula for a new release, and push it to the tap."
+
+inputs:
+  tag:
+    description: "Release tag, e.g. v0.2.1."
+    required: true
+  tap-repo:
+    description: "owner/name of the Homebrew tap repository, e.g. jhheider/homebrew-tap."
+    required: true
+  formula-path:
+    description: "Path to the formula within the tap, e.g. Formula/edikt.rb."
+    required: true
+  token:
+    description: "Token with push access to the tap repo."
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        TAG: ${{ inputs.tag }}
+        TAP_REPO: ${{ inputs.tap-repo }}
+        FORMULA_PATH: ${{ inputs.formula-path }}
+        SCRIPT: ${{ github.action_path }}/bump-tap-formula.py
+      run: |
+        set -euo pipefail
+        git clone "https://x-access-token:${GH_TOKEN}@github.com/${TAP_REPO}.git" tap
+        python3 "$SCRIPT" "$TAG" "tap/${FORMULA_PATH}"
+        cd tap
+        if git diff --quiet; then
+          echo "formula already at ${TAG}; nothing to do"
+          exit 0
+        fi
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git commit -am "refresh binary formula for ${TAG}"
+        git push

@@ -1,0 +1,36 @@
+name: "Setup Rust"
+description: "Checkout, install a Rust toolchain, and restore the shared build cache."
+
+inputs:
+  toolchain:
+    description: "Rust toolchain: stable, nightly, or a pinned version like 1.79.0."
+    default: "stable"
+  components:
+    description: "Comma-separated toolchain components, e.g. clippy,rustfmt."
+    default: ""
+  targets:
+    description: "Comma-separated compilation targets to add, e.g. x86_64-unknown-linux-musl."
+    default: ""
+  cache:
+    description: "Restore and save the Swatinem build cache."
+    default: "true"
+  shared-key:
+    description: "rust-cache shared-key. Jobs that share it share one cache."
+    default: "debug"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@v7
+    # @master takes the `toolchain` input, so callers can pin stable/nightly/etc.
+    - uses: dtolnay/rust-toolchain@master
+      with:
+        toolchain: ${{ inputs.toolchain }}
+        components: ${{ inputs.components }}
+        targets: ${{ inputs.targets }}
+    - if: inputs.cache == 'true'
+      uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: "v1-rust"
+        shared-key: ${{ inputs.shared-key }}
+        cache-all-crates: "true"

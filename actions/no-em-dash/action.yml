@@ -1,0 +1,15 @@
+name: "No em-dashes"
+description: "Fail if any tracked file contains an em-dash or en-dash. Keeps prose in plain ASCII."
+
+inputs:
+  skip-prefixes:
+    description: "Whitespace-separated path prefixes to exempt (verbatim files like licenses or fixtures)."
+    default: "LICENSE"
+
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      env:
+        SKIP_PREFIXES: ${{ inputs.skip-prefixes }}
+      run: python3 "${{ github.action_path }}/no-em-dash.py"

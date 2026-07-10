@@ -4,7 +4,12 @@ name: Security Audit
 # cargo-audit` compile on every run. Callers wire up the schedule/dispatch
 # trigger; advisories rarely change between commits, so weekly is plenty.
 on:
-  workflow_call: {}
+  workflow_call:
+    inputs:
+      runs-on:
+        description: 'Runner for the audit job. Use "self-hosted" for a private repo; keep the default for public repos.'
+        type: string
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
@@ -14,7 +19,7 @@ permissions:
 jobs:
   audit:
     name: cargo audit
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v7
       - uses: rustsec/audit-check@v2

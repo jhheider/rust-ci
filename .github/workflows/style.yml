@@ -11,11 +11,15 @@ on:
         description: 'Whitespace-separated path prefixes to exempt (verbatim files like licenses, fixtures).'
         type: string
         default: "LICENSE"
+      runs-on:
+        description: 'Runner for the style job. Use "self-hosted" for a private repo; keep the default for public repos.'
+        type: string
+        default: "ubuntu-latest"
 
 jobs:
   no-em-dash:
     name: no em-dashes
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v7
       - uses: jhheider/rust-ci/actions/no-em-dash@v1

@@ -31,6 +31,10 @@ on:
         description: 'Run cargo-llvm-cov and upload to Coveralls (advisory).'
         type: boolean
         default: false
+      runs-on:
+        description: 'Runner for the single-runner jobs (fmt, clippy, coverage). Use "self-hosted" to route a private repo to a self-hosted runner; the test matrix is chosen separately via `os`. Keep the default for public repos (free hosted minutes).'
+        type: string
+        default: "ubuntu-latest"
 
 env:
   CARGO_TERM_COLOR: always
@@ -38,7 +42,7 @@ env:
 jobs:
   fmt:
     name: Rustfmt
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
@@ -49,7 +53,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
@@ -75,7 +79,7 @@ jobs:
   coverage:
     name: Coverage
     if: ${{ inputs.coverage }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:

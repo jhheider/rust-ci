@@ -14,7 +14,7 @@ on:
   workflow_call:
     inputs:
       bin-name:
-        description: 'The built binary name (without extension).'
+        description: 'Built binary name(s) without extension. Space-separate several to bundle multiple binaries in one archive (e.g. "wf wayfinder-mcp"); gen-docs runs against the first name only.'
         type: string
         required: true
       targets:
@@ -99,27 +99,31 @@ jobs:
       - name: Package
         shell: bash
         env:
-          BIN: ${{ inputs.bin-name }}
+          BINS: ${{ inputs.bin-name }}
           TARGET: ${{ matrix.target }}
           ASSET: ${{ matrix.asset }}
           GEN_DOCS: ${{ inputs.gen-docs }}
           INCLUDE: ${{ inputs.include-files }}
         run: |
           set -euo pipefail
-          bin="target/$TARGET/release/$BIN"
+          reldir="target/$TARGET/release"
           staging="stage"
           mkdir -p "$staging"
           for f in $INCLUDE; do cp "$f" "$staging/" 2>/dev/null || true; done
+          # First-listed binary is the "primary" (the CLI whose docs we generate).
+          primary="${BINS%% *}"
           if [[ "$ASSET" == *.zip ]]; then
-            cp "$bin.exe" "$staging/"
+            for bin in $BINS; do cp "$reldir/$bin.exe" "$staging/"; done
             (cd "$staging" && 7z a "$GITHUB_WORKSPACE/$ASSET" .)
           else
-            cp "$bin" "$staging/"
-            strip "$staging/$BIN" || true
+            for bin in $BINS; do
+              cp "$reldir/$bin" "$staging/"
+              strip "$staging/$bin" || true
+            done
             if [[ "$GEN_DOCS" == "true" ]]; then
-              "$bin" --manpage > "$staging/$BIN.1"
+              "$reldir/$primary" --manpage > "$staging/$primary.1"
               for shell in bash zsh fish; do
-                "$bin" --completions "$shell" > "$staging/$BIN.$shell"
+                "$reldir/$primary" --completions "$shell" > "$staging/$primary.$shell"
               done
             fi
             tar czf "$GITHUB_WORKSPACE/$ASSET" -C "$staging" .

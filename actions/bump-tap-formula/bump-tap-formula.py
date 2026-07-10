@@ -6,8 +6,10 @@ GitHub release asset, retags the URL and recomputes the `sha256` on the line
 that follows it (downloading the asset from the retagged URL). Everything else
 in the formula -- desc, install block, test block -- is left untouched.
 
-Usage: bump-tap-formula.py <tag> <formula-path>
+Usage: bump-tap-formula.py <tag> <formula-path> [<formula-path> ...]
   tag: the release tag, e.g. v0.2.1
+Each formula path is bumped independently, so one tap can hold a separate
+formula per binary (e.g. Formula/wf.rb and Formula/wayfinder-mcp.rb).
 """
 import hashlib
 import re
@@ -32,10 +34,7 @@ def sha256_of(url: str) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def main() -> int:
-    tag, path = sys.argv[1], sys.argv[2]
-    version = tag[1:] if tag.startswith("v") else tag
-
+def bump_one(path: str, tag: str, version: str) -> None:
     lines = open(path, encoding="utf-8").read().split("\n")
     out = []
     i = 0
@@ -64,6 +63,14 @@ def main() -> int:
         i += 1
 
     open(path, "w", encoding="utf-8").write("\n".join(out))
+
+
+def main() -> int:
+    tag, paths = sys.argv[1], sys.argv[2:]
+    version = tag[1:] if tag.startswith("v") else tag
+    for path in paths:
+        print(f"{path}:", file=sys.stderr)
+        bump_one(path, tag, version)
     return 0
 
 

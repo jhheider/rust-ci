@@ -9,7 +9,7 @@ inputs:
     description: "owner/name of the Homebrew tap repository, e.g. jhheider/homebrew-tap."
     required: true
   formula-path:
-    description: "Path to the formula within the tap, e.g. Formula/edikt.rb."
+    description: "Path(s) to the formula within the tap, e.g. Formula/edikt.rb. Space-separate several to bump one formula per binary in the same tap."
     required: true
   token:
     description: "Token with push access to the tap repo."
@@ -28,7 +28,9 @@ runs:
       run: |
         set -euo pipefail
         git clone "https://x-access-token:${GH_TOKEN}@github.com/${TAP_REPO}.git" tap
-        python3 "$SCRIPT" "$TAG" "tap/${FORMULA_PATH}"
+        paths=()
+        for f in $FORMULA_PATH; do paths+=("tap/$f"); done
+        python3 "$SCRIPT" "$TAG" "${paths[@]}"
         cd tap
         if git diff --quiet; then
           echo "formula already at ${TAG}; nothing to do"

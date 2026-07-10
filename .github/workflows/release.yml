@@ -14,11 +14,11 @@ on:
   workflow_call:
     inputs:
       bin-name:
-        description: 'The built binary name (without extension).'
+        description: 'Built binary name(s) without extension. Space-separate several to bundle multiple binaries in one archive (e.g. "wf wayfinder-mcp"); gen-docs runs against the first name only.'
         type: string
         required: true
       targets:
-        description: 'JSON matrix object, e.g. {"include": [{"os":..,"target":..,"asset":..}, ..]}.'
+        description: 'JSON matrix object, e.g. {"include": [{"os":..,"target":..,"asset":..}, ..]}. With multiple bin-name values, put a `{bin}` placeholder in each asset (e.g. "{bin}-linux-x86_64.tar.gz") so every binary gets its own archive.'
         type: string
         required: true
       tag:
@@ -30,7 +30,7 @@ on:
         type: string
         default: "stable"
       gen-docs:
-        description: 'Generate a man page and shell completions into the archive (binary must support --manpage/--completions).'
+        description: 'Generate a man page and shell completions into the primary (first-listed) binary''s archive (that binary must support --manpage/--completions).'
         type: boolean
         default: false
       include-files:
@@ -50,7 +50,7 @@ on:
         type: string
         default: ""
       tap-formula:
-        description: 'Formula path within the tap, e.g. Formula/edikt.rb.'
+        description: 'Formula path(s) within the tap, e.g. Formula/edikt.rb. Space-separate several (one per binary) to refresh a separate formula for each.'
         type: string
         default: ""
     secrets:
@@ -96,40 +96,49 @@ jobs:
       - name: Build
         run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Package
+      - name: Package and attach
         shell: bash
         env:
-          BIN: ${{ inputs.bin-name }}
+          BINS: ${{ inputs.bin-name }}
           TARGET: ${{ matrix.target }}
           ASSET: ${{ matrix.asset }}
           GEN_DOCS: ${{ inputs.gen-docs }}
           INCLUDE: ${{ inputs.include-files }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          bin="target/$TARGET/release/$BIN"
-          staging="stage"
-          mkdir -p "$staging"
-          for f in $INCLUDE; do cp "$f" "$staging/" 2>/dev/null || true; done
-          if [[ "$ASSET" == *.zip ]]; then
-            cp "$bin.exe" "$staging/"
-            (cd "$staging" && 7z a "$GITHUB_WORKSPACE/$ASSET" .)
-          else
-            cp "$bin" "$staging/"
-            strip "$staging/$BIN" || true
-            if [[ "$GEN_DOCS" == "true" ]]; then
-              "$bin" --manpage > "$staging/$BIN.1"
-              for shell in bash zsh fish; do
-                "$bin" --completions "$shell" > "$staging/$BIN.$shell"
-              done
-            fi
-            tar czf "$GITHUB_WORKSPACE/$ASSET" -C "$staging" .
+          reldir="target/$TARGET/release"
+          # First-listed binary is the "primary" (the CLI whose docs we generate).
+          primary="${BINS%% *}"
+          # With several binaries the asset name must vary per binary; a `{bin}`
+          # placeholder in `asset` is substituted with each binary's name.
+          if [[ "$(echo "$BINS" | wc -w)" -gt 1 && "$ASSET" != *"{bin}"* ]]; then
+            echo "::error::multiple bin-name values require a {bin} placeholder in each asset name" >&2
+            exit 1
           fi
-
-      - name: Attach to release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload '${{ github.event.release.tag_name || inputs.tag }}' '${{ matrix.asset }}' --clobber
+          # One archive per binary, uploaded independently.
+          for bin in $BINS; do
+            asset="${ASSET//\{bin\}/$bin}"
+            staging="stage-$bin"
+            mkdir -p "$staging"
+            for f in $INCLUDE; do cp "$f" "$staging/" 2>/dev/null || true; done
+            if [[ "$asset" == *.zip ]]; then
+              cp "$reldir/$bin.exe" "$staging/"
+              (cd "$staging" && 7z a "$GITHUB_WORKSPACE/$asset" .)
+            else
+              cp "$reldir/$bin" "$staging/"
+              strip "$staging/$bin" || true
+              if [[ "$GEN_DOCS" == "true" && "$bin" == "$primary" ]]; then
+                "$reldir/$bin" --manpage > "$staging/$bin.1"
+                for shell in bash zsh fish; do
+                  "$reldir/$bin" --completions "$shell" > "$staging/$bin.$shell"
+                done
+              fi
+              tar czf "$GITHUB_WORKSPACE/$asset" -C "$staging" .
+            fi
+            gh release upload "$TAG" "$asset" --clobber
+          done
 
   publish-crates:
     name: Publish to crates.io

@@ -1,20 +1,20 @@
 name: Security Audit
 
-# Reusable cargo-audit via the prebuilt rustsec action - no `cargo install
-# cargo-audit` compile on every run. Callers wire up the schedule/dispatch
-# trigger; advisories rarely change between commits, so weekly is plenty.
+# Reusable cargo-audit. Installs a prebuilt cargo-audit binary
+# (taiki-e/install-action) and runs it, rather than the rustsec Docker action
+# - so it works on self-hosted runners with no Docker socket, and still never
+# compiles cargo-audit. Callers wire the schedule/dispatch trigger; advisories
+# rarely change between commits, so weekly is plenty.
 on:
   workflow_call:
     inputs:
       runs-on:
-        description: 'Runner for the audit job. Use "self-hosted" for a private repo; keep the default for public repos.'
+        description: 'Runner for the audit job. Use "self-hosted" for a private repo (now works - no Docker needed); keep the default for public repos.'
         type: string
         default: "ubuntu-latest"
 
 permissions:
   contents: read
-  checks: write
-  issues: write
 
 jobs:
   audit:
@@ -22,6 +22,8 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     steps:
       - uses: actions/checkout@v7
-      - uses: rustsec/audit-check@v2
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          cache: "false"
+      - uses: taiki-e/install-action@cargo-audit
+      - run: cargo audit

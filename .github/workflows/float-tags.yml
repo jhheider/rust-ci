@@ -1,0 +1,70 @@
+name: Float tags
+
+# When a vX.Y.Z release tag is pushed, advance the floating vX and vX.Y tags
+# to it - but only ever forward. Consumers pin `@v1` / `@v1.4`; this keeps
+# those pointers on the newest matching release without a manual force-push.
+#
+# Safety: a backport (e.g. v1.3.5 pushed after v1.4.1 exists) must NOT drag
+# v1 backward. So each float moves only if the pushed tag is the highest
+# semver in that line. Pre-releases (v1.2.3-rc.1) are ignored entirely.
+#
+# Tags pushed by GITHUB_TOKEN don't trigger further workflow runs, so this
+# can't loop. The `v*.*.*` filter also excludes the vX / vX.Y floats.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  float:
+    name: advance floating tags
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Advance vX and vX.Y if this is the newest in the line
+        env:
+          PUSHED: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          # Release tags only: strict vMAJOR.MINOR.PATCH, no pre-release suffix.
+          if ! [[ "$PUSHED" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::notice::$PUSHED is not a plain vX.Y.Z release tag - skipping."
+            exit 0
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          sha="$(git rev-list -n1 "$PUSHED")"
+
+          # Highest release tag (numeric, no pre-release) matching a glob.
+          highest() {
+            git tag -l "$1" \
+              | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+              | sed 's/^v//' \
+              | sort -V \
+              | tail -1
+          }
+
+          pushed_ver="${PUSHED#v}"
+
+          move() { # $1 = float name, $2 = glob of its line
+            local float="$1" glob="$2" top
+            top="$(highest "$glob")"
+            if [[ "$top" == "$pushed_ver" ]]; then
+              echo "Advancing $float -> $PUSHED ($sha)"
+              git tag -f "$float" "$sha"
+              git push -f origin "refs/tags/$float"
+            else
+              echo "Leaving $float alone: newest in $glob is v$top, not $PUSHED."
+            fi
+          }
+
+          move "v${major}"          "v${major}.*.*"
+          move "v${major}.${minor}" "v${major}.${minor}.*"

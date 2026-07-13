@@ -39,7 +39,9 @@ jobs:
 ```
 
 Inputs: `os`, `toolchain` (default `stable`), `rustflags` (default `-D warnings`
-- do not add `-A` escapes, fix the code), `clippy-args`, `test-args`, `coverage`.
+- do not add `-A` escapes, fix the code), `clippy-args`, `test-args`, `coverage`,
+`system-packages` (apt packages to install on Linux before the compile jobs, e.g.
+`libasound2-dev pkg-config` for a rodio/ALSA crate; Linux-only, empty by default).
 
 ### `audit.yml` - weekly cargo-audit
 
@@ -101,11 +103,16 @@ jobs:
       # crates: "edikt-core edikt-syntax edikt"   # dependency order
       # tap-repo: jhheider/homebrew-tap
       # tap-formula: Formula/govee-tui.rb
+      # system-packages: "libasound2-dev pkg-config"  # Linux build deps
     secrets: inherit
 ```
 
 `musl` and non-native `aarch64-unknown-linux-gnu` targets auto-install their
-toolchains from the target triple - no extra config.
+toolchains from the target triple - no extra config. A crate that needs Linux
+system libraries at build time (e.g. `libasound2-dev` for a rodio/ALSA binary)
+sets `system-packages`; they are apt-installed on Linux build runners only, so a
+non-static Linux target (`x86_64-unknown-linux-gnu`) is the way to ship such a
+binary rather than `musl`.
 
 ## Composite actions
 

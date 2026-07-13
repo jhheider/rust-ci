@@ -35,6 +35,10 @@ on:
         description: 'Runner for the single-runner jobs (fmt, clippy, coverage). Use "self-hosted" to route a private repo to a self-hosted runner; the test matrix is chosen separately via `os`. Keep the default for public repos (free hosted minutes).'
         type: string
         default: "ubuntu-latest"
+      system-packages:
+        description: 'Space-separated apt packages to install on Linux runners before the compile steps (e.g. "libasound2-dev pkg-config" for a rodio/ALSA crate). Linux-only; ignored on macOS/Windows. Empty = install nothing.'
+        type: string
+        default: ""
 
 env:
   CARGO_TERM_COLOR: always
@@ -59,6 +63,9 @@ jobs:
         with:
           toolchain: ${{ inputs.toolchain }}
           components: clippy
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux' && inputs.system-packages != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
       - run: cargo clippy ${{ inputs.clippy-args }}
         env:
           RUSTFLAGS: ${{ inputs.rustflags }}
@@ -74,6 +81,9 @@ jobs:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
           toolchain: ${{ inputs.toolchain }}
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux' && inputs.system-packages != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
       - run: cargo test ${{ inputs.test-args }}
 
   coverage:
@@ -86,6 +96,9 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: llvm-tools-preview
           shared-key: coverage
+      - name: Install system packages (Linux)
+        if: runner.os == 'Linux' && inputs.system-packages != ''
+        run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
       - uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate coverage report
         run: |

@@ -41,6 +41,10 @@ on:
         description: 'Space-separated apt packages to install on Linux build runners before compiling (e.g. "libasound2-dev pkg-config" for a rodio/ALSA crate). Linux-only; ignored on macOS/Windows. Empty = install nothing.'
         type: string
         default: ""
+      features:
+        description: 'Cargo features to build the release binaries with (space/comma-separated, e.g. "subscripts"). Empty builds default features.'
+        type: string
+        default: ""
       publish-crates:
         description: 'Publish workspace crates to crates.io after the builds (real releases only; skipped on dispatch).'
         type: boolean
@@ -102,7 +106,7 @@ jobs:
           key: ${{ matrix.target }}
 
       - name: Build
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --release --target ${{ matrix.target }} ${{ inputs.features != '' && format('--features {0}', inputs.features) || '' }}
 
       - name: Package and attach
         shell: bash

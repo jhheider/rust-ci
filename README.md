@@ -13,7 +13,7 @@ Pin consumers to the `v1` tag. Breaking changes get a new major tag.
 
 ## Reusable workflows
 
-### `ci.yml` - fmt + clippy + test (+ optional coverage)
+### `ci.yml`: fmt + clippy + test (+ optional coverage)
 
 No separate `cargo check` job: `cargo clippy --all-targets` with `-D warnings`
 compiles everything check would, so a check job is only wasted minutes.
@@ -43,7 +43,7 @@ Inputs: `os`, `toolchain` (default `stable`), `rustflags` (default `-D warnings`
 `system-packages` (apt packages to install on Linux before the compile jobs, e.g.
 `libasound2-dev pkg-config` for a rodio/ALSA crate; Linux-only, empty by default).
 
-### `audit.yml` - weekly cargo-audit
+### `audit.yml`: weekly cargo-audit
 
 ```yaml
 name: Security Audit
@@ -55,7 +55,7 @@ jobs:
     uses: jhheider/rust-ci/.github/workflows/audit.yml@v1
 ```
 
-### `style.yml` - ASCII prose gate (no em/en-dashes)
+### `style.yml`: ASCII prose gate (no em/en-dashes)
 
 ```yaml
 name: Style
@@ -72,11 +72,11 @@ jobs:
       skip-prefixes: "LICENSE fixtures/"   # default "LICENSE"
 ```
 
-### `release.yml` - build, attach, optionally publish + bump tap
+### `release.yml`: build, attach, optionally publish + bump tap
 
 Wire it to `release: [published]`. Everything a repo does not need stays off.
 
-The caller MUST grant `permissions: contents: write` - a reusable workflow
+The caller MUST grant `permissions: contents: write`; a reusable workflow
 cannot request more permission than its caller holds. `targets` is a matrix
 object (`{"include": [...]}`).
 
@@ -108,7 +108,7 @@ jobs:
 ```
 
 `musl` and non-native `aarch64-unknown-linux-gnu` targets auto-install their
-toolchains from the target triple - no extra config. A crate that needs Linux
+toolchains from the target triple, no extra config. A crate that needs Linux
 system libraries at build time (e.g. `libasound2-dev` for a rodio/ALSA binary)
 sets `system-packages`; they are apt-installed on Linux build runners only, so a
 non-static Linux target (`x86_64-unknown-linux-gnu`) is the way to ship such a

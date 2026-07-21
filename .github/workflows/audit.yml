@@ -1,15 +1,15 @@
 name: Security Audit
 
 # Reusable cargo-audit. Installs a prebuilt cargo-audit binary
-# (taiki-e/install-action) and runs it, rather than the rustsec Docker action
-# - so it works on self-hosted runners with no Docker socket, and still never
+# (taiki-e/install-action) and runs it, rather than the rustsec Docker action,
+# so it works on self-hosted runners with no Docker socket, and still never
 # compiles cargo-audit. Callers wire the schedule/dispatch trigger; advisories
 # rarely change between commits, so weekly is plenty.
 on:
   workflow_call:
     inputs:
       runs-on:
-        description: 'Runner for the audit job. Use "self-hosted" for a private repo (now works - no Docker needed); keep the default for public repos.'
+        description: 'Runner for the audit job. Use "self-hosted" for a private repo (now works, no Docker needed); keep the default for public repos.'
         type: string
         default: "ubuntu-latest"
 

@@ -3,7 +3,7 @@ name: Style
 # Reusable prose gate: rejects em-dashes and en-dashes so the repo's text stays
 # plain ASCII. The check lives in the `no-em-dash` composite action (a companion
 # script, not an inline heredoc); this workflow is the turnkey wrapper. Callers
-# wire the trigger - run it on every change so docs are gated too.
+# wire the trigger; run it on every change so docs are gated too.
 on:
   workflow_call:
     inputs:

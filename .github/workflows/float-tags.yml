@@ -1,7 +1,7 @@
 name: Float tags
 
 # When a vX.Y.Z release tag is pushed, advance the floating vX and vX.Y tags
-# to it - but only ever forward. Consumers pin `@v1` / `@v1.4`; this keeps
+# to it, but only ever forward. Consumers pin `@v1` / `@v1.4`; this keeps
 # those pointers on the newest matching release without a manual force-push.
 #
 # Safety: a backport (e.g. v1.3.5 pushed after v1.4.1 exists) must NOT drag
@@ -36,7 +36,7 @@ jobs:
 
           # Release tags only: strict vMAJOR.MINOR.PATCH, no pre-release suffix.
           if ! [[ "$PUSHED" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-            echo "::notice::$PUSHED is not a plain vX.Y.Z release tag - skipping."
+            echo "::notice::$PUSHED is not a plain vX.Y.Z release tag; skipping."
             exit 0
           fi
           major="${BASH_REMATCH[1]}"

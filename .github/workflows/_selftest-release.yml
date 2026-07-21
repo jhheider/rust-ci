@@ -2,7 +2,7 @@ name: selftest-release
 
 # Throwaway: dispatch-only harness to prove the reusable release.yml LOADS
 # (passes reusable-workflow validation) without minting a real release. The
-# build step will fail here (rust-ci has no Cargo project) - that is fine; we
+# build step will fail here (rust-ci has no Cargo project), which is fine; we
 # only care that the run gets PAST startup into the build job.
 on:
   workflow_dispatch: {}
@@ -13,7 +13,7 @@ permissions:
   contents: write
 
 jobs:
-  # Binary path: the build job starts (then fails - no Cargo project here -
+  # Binary path: the build job starts (then fails, no Cargo project here,
   # which is fine; we only prove the reusable loads past startup).
   r:
     uses: ./.github/workflows/release.yml

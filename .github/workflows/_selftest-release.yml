@@ -13,9 +13,21 @@ permissions:
   contents: write
 
 jobs:
+  # Binary path: the build job starts (then fails - no Cargo project here -
+  # which is fine; we only prove the reusable loads past startup).
   r:
     uses: ./.github/workflows/release.yml
     with:
       bin-name: dummy
       targets: '{"include":[{"os":"ubuntu-latest","target":"aarch64-unknown-linux-musl","asset":"dummy.tar.gz"}]}'
+    secrets: inherit
+
+  # Library-only path: no bin-name/targets. The build job must SKIP (not fail),
+  # and publish-crates is gated off on workflow_dispatch. Proves the lib-only
+  # wiring loads and the empty-matrix build is skipped, not errored.
+  lib:
+    uses: ./.github/workflows/release.yml
+    with:
+      publish-crates: true
+      crates: dummy-lib
     secrets: inherit

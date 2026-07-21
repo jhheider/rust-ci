@@ -33,7 +33,7 @@ runs:
           ver=$(cargo metadata --no-deps --format-version 1 \
             | jq -r --arg c "$c" '.packages[] | select(.name==$c) | .version')
           if on_registry "$c" "$ver"; then
-            echo "$c $ver already on crates.io - skip"
+            echo "$c $ver already on crates.io, skipping"
             continue
           fi
           echo "publishing $c $ver"

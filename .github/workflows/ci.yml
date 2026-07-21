@@ -16,7 +16,7 @@ on:
         type: string
         default: "stable"
       rustflags:
-        description: 'RUSTFLAGS for the clippy compile. Keep it lint-clean; do not add -A escapes - fix the code instead.'
+        description: 'RUSTFLAGS for the clippy compile. Keep it lint-clean; do not add -A escapes; fix the code instead.'
         type: string
         default: "-D warnings"
       clippy-args:

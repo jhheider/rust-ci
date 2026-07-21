@@ -114,6 +114,20 @@ sets `system-packages`; they are apt-installed on Linux build runners only, so a
 non-static Linux target (`x86_64-unknown-linux-gnu`) is the way to ship such a
 binary rather than `musl`.
 
+**Library-only crates** (no binary to attach): omit `bin-name`/`targets`
+entirely and just publish to crates.io. The build/attach and tap jobs skip; only
+`publish-crates` runs.
+
+```yaml
+jobs:
+  release:
+    uses: jhheider/rust-ci/.github/workflows/release.yml@v1
+    with:
+      publish-crates: true
+      crates: my-lib            # dependency order for a workspace
+    secrets: inherit
+```
+
 ## Composite actions
 
 - `actions/setup-rust` - checkout + toolchain + shared build cache. Inputs:

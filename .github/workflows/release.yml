@@ -6,6 +6,10 @@ name: Release
 # passes `tag:` to rebuild an existing release). Everything a given repo does
 # not need (docs, extra files, crates, tap) stays off by default.
 #
+# LIBRARY-ONLY crates: leave `bin-name` (and `targets`) empty and set
+# `publish-crates: true` with `crates:`. The build/attach and tap jobs skip;
+# only the crates.io publish runs. No binaries, no tap, no matrix needed.
+#
 # IMPORTANT: the CALLER must grant `permissions: contents: write` (to attach
 # assets). A reusable workflow cannot request more permission than its caller
 # holds - declaring it here would fail to load under a read-only default token.
@@ -14,13 +18,15 @@ on:
   workflow_call:
     inputs:
       bin-name:
-        description: 'Built binary name(s) without extension. Space-separate several to bundle multiple binaries in one archive (e.g. "wf wayfinder-mcp"); gen-docs runs against the first name only.'
+        description: 'Built binary name(s) without extension. Space-separate several to bundle multiple binaries in one archive (e.g. "wf wayfinder-mcp"); gen-docs runs against the first name only. LEAVE EMPTY for a library-only crate: the build job is skipped and only publish-crates runs.'
         type: string
-        required: true
+        required: false
+        default: ""
       targets:
-        description: 'JSON matrix object, e.g. {"include": [{"os":..,"target":..,"asset":..}, ..]}. With multiple bin-name values, put a `{bin}` placeholder in each asset (e.g. "{bin}-linux-x86_64.tar.gz") so every binary gets its own archive.'
+        description: 'JSON matrix object, e.g. {"include": [{"os":..,"target":..,"asset":..}, ..]}. With multiple bin-name values, put a `{bin}` placeholder in each asset (e.g. "{bin}-linux-x86_64.tar.gz") so every binary gets its own archive. Ignored (and unnecessary) for a library-only crate with an empty bin-name.'
         type: string
-        required: true
+        required: false
+        default: '{"include":[]}'
       tag:
         description: 'Release tag override for workflow_dispatch rebuilds. Empty on release events (the event supplies it).'
         type: string
@@ -73,6 +79,10 @@ env:
 jobs:
   build:
     name: Build (${{ matrix.asset }})
+    # Skipped for a library-only crate (empty bin-name); the empty `targets`
+    # default also expands to zero matrix jobs. publish-crates handles a skipped
+    # build via `always()` below.
+    if: ${{ inputs.bin-name != '' }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -155,7 +165,9 @@ jobs:
   publish-crates:
     name: Publish to crates.io
     needs: build
-    if: ${{ inputs.publish-crates && github.event_name == 'release' }}
+    # `always()` so a *skipped* build (library-only crate) still publishes; the
+    # result guard still blocks publish when a real binary build failed.
+    if: ${{ always() && inputs.publish-crates && github.event_name == 'release' && needs.build.result != 'failure' && needs.build.result != 'cancelled' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -172,7 +184,9 @@ jobs:
   bump-formula:
     name: Refresh Homebrew formula
     needs: build
-    if: ${{ inputs.tap-repo != '' }}
+    # A tap only makes sense with a successful binary build (never for a
+    # library-only crate, whose build is skipped).
+    if: ${{ always() && inputs.tap-repo != '' && needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: jhheider/rust-ci/actions/bump-tap-formula@v1

@@ -41,7 +41,11 @@ jobs:
 Inputs: `os`, `toolchain` (default `stable`), `rustflags` (default `-D warnings`
 - do not add `-A` escapes, fix the code), `clippy-args`, `test-args`, `coverage`,
 `system-packages` (apt packages to install on Linux before the compile jobs, e.g.
-`libasound2-dev pkg-config` for a rodio/ALSA crate; Linux-only, empty by default).
+`libasound2-dev pkg-config` for a rodio/ALSA crate; Linux-only, empty by default),
+`runs-on` (the single-runner jobs' runner; `self-hosted` for private repos), and
+`build-jobs` (cargo jobs for the coverage build, default 4: instrumented test
+binaries link in parallel, and on a self-hosted box whose runners share memory,
+more jobs than that OOM-kill the linker).
 
 ### `audit.yml`: weekly cargo-audit
 

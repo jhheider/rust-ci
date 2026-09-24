@@ -31,6 +31,14 @@ on:
         description: 'Run cargo-llvm-cov and upload to Coveralls (advisory).'
         type: boolean
         default: false
+      build-jobs:
+        description: >-
+          Cargo build jobs for the coverage build (CARGO_BUILD_JOBS). Instrumented
+          test binaries link at once, one per job; on a self-hosted box that shares
+          memory between runners, the default of 4 keeps them from OOM-killing the
+          linker. Hosted runners have about 4 cores, so it costs them nothing.
+        type: number
+        default: 4
       runs-on:
         description: 'Runner for the single-runner jobs (fmt, clippy, coverage). Use "self-hosted" to route a private repo to a self-hosted runner; the test matrix is chosen separately via `os`. Keep the default for public repos (free hosted minutes).'
         type: string
@@ -101,6 +109,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y ${{ inputs.system-packages }}
       - uses: taiki-e/install-action@cargo-llvm-cov
       - name: Generate coverage report
+        # llvm-cov reads the embedded coverage map, not DWARF, so dropping debug
+        # info costs the report nothing and halves what each link holds.
+        env:
+          CARGO_BUILD_JOBS: ${{ inputs.build-jobs }}
+          CARGO_PROFILE_DEV_DEBUG: "0"
+          CARGO_PROFILE_TEST_DEBUG: "0"
         run: |
           mkdir -p coverage
           cargo llvm-cov --workspace --all-features --lcov --output-path coverage/lcov.info

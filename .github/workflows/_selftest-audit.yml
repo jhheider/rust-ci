@@ -1,0 +1,83 @@
+name: selftest-audit
+
+# Self-test for ci.yml's `audit` job, in two halves:
+#
+# 1. `behaviour` (every PR): proves cargo-audit itself behaves as the job
+#    relies on - a lockfile pinned to a known-vulnerable crate fails, a clean
+#    lockfile passes. Both assertions are expected outcomes, so this job is
+#    green exactly when cargo-audit is honest. This is the fixture form of the
+#    proof.
+# 2. `ci-with-audit` (dispatch-only, after merge): proves the reusable
+#    ci.yml LOADS with `audit: true` and the nested audit job validates and
+#    starts. rust-ci has no Cargo project at the root, so cargo audit then
+#    fails at "no lockfile" after startup: same accepted-failure shape as
+#    _selftest-release, where getting past validation is the point. Dispatch
+#    needs the workflow on the default branch, hence the event split.
+#
+# The job-level end-to-end proof (real caller wiring, red on a vulnerable
+# lockfile, green on a clean one) runs on throwaway branches.
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  behaviour:
+    name: cargo-audit behaves
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jhheider/rust-ci/actions/setup-rust@v1
+        with:
+          cache: "false"
+      - uses: taiki-e/install-action@cargo-audit
+
+      - name: A known-vulnerable lockfile fails
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/vuln/src
+          cd /tmp/vuln
+          cat > Cargo.toml <<'EOF'
+          [package]
+          name = "vuln-fixture"
+          version = "0.1.0"
+          edition = "2021"
+
+          [dependencies]
+          # smallvec < 1.6.1 is RUSTSEC-2021-0003 (double-free).
+          smallvec = "=1.6.0"
+          EOF
+          touch src/lib.rs
+          cargo generate-lockfile
+          if cargo audit; then
+            echo "::error::cargo audit passed on a known-vulnerable lockfile"
+            exit 1
+          fi
+          echo "vulnerable lockfile rejected, as it must be"
+
+      - name: A clean lockfile passes
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/clean/src
+          cd /tmp/clean
+          cat > Cargo.toml <<'EOF'
+          [package]
+          name = "clean-fixture"
+          version = "0.1.0"
+          edition = "2021"
+          EOF
+          touch src/lib.rs
+          cargo generate-lockfile
+          cargo audit
+
+  # Dispatch-only: load the real nested path. Expected to end red at
+  # "no Cargo.lock" on this repo's root; we only care the run reaches the
+  # audit job past validation. See the header comment.
+  ci-with-audit:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+    with:
+      os: '["ubuntu-latest"]'
+      audit: true

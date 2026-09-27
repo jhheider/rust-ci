@@ -27,6 +27,10 @@ on:
         description: 'Arguments to `cargo test`.'
         type: string
         default: "--workspace --all-features"
+      audit:
+        description: 'Run cargo-audit as its own job. A scheduled audit alone stops firing after 60 days without activity, so push/PR activity is what keeps a repo audited.'
+        type: boolean
+        default: true
       coverage:
         description: 'Run cargo-llvm-cov and upload to Coveralls (advisory).'
         type: boolean
@@ -123,3 +127,15 @@ jobs:
         with:
           path-to-lcov: coverage/lcov.info
           fail-on-error: false
+
+  # One source of truth for the audit steps: this nests the same reusable
+  # audit.yml that callers wire on a schedule. The relative path resolves to
+  # this repository AND the same commit as this file, so `@v1` callers always
+  # get a matching pair (no ref skew), and the repo's own self-test exercises
+  # the exact copy under review.
+  audit:
+    name: Security audit
+    if: ${{ inputs.audit }}
+    uses: ./.github/workflows/audit.yml
+    with:
+      runs-on: ${{ inputs.runs-on }}

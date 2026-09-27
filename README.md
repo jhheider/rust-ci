@@ -13,10 +13,17 @@ Pin consumers to the `v1` tag. Breaking changes get a new major tag.
 
 ## Reusable workflows
 
-### `ci.yml`: fmt + clippy + test (+ optional coverage)
+### `ci.yml`: fmt + clippy + test + audit (+ optional coverage)
 
 No separate `cargo check` job: `cargo clippy --all-targets` with `-D warnings`
 compiles everything check would, so a check job is only wasted minutes.
+
+The `audit` job runs cargo-audit on every push and PR by default, because a
+scheduled audit alone stops firing once GitHub disables schedules on repos
+quiet for 60 days (and the GitHub Advisory Database has missed RustSec items
+entirely): activity is what keeps a repo audited. The job nests `audit.yml`,
+so the steps live in exactly one place, and a caller's `audit.toml` still
+governs justified ignores.
 
 ```yaml
 name: CI
@@ -39,15 +46,17 @@ jobs:
 ```
 
 Inputs: `os`, `toolchain` (default `stable`), `rustflags` (default `-D warnings`
-- do not add `-A` escapes, fix the code), `clippy-args`, `test-args`, `coverage`,
-`system-packages` (apt packages to install on Linux before the compile jobs, e.g.
+- do not add `-A` escapes, fix the code), `clippy-args`, `test-args`,
+`coverage`, `audit` (default true: the per-push cargo-audit job described
+below), `system-packages` (apt packages to install on Linux before the compile
+jobs, e.g.
 `libasound2-dev pkg-config` for a rodio/ALSA crate; Linux-only, empty by default),
 `runs-on` (the single-runner jobs' runner; `self-hosted` for private repos), and
 `build-jobs` (cargo jobs for the coverage build, default 4: instrumented test
 binaries link in parallel, and on a self-hosted box whose runners share memory,
 more jobs than that OOM-kill the linker).
 
-### `audit.yml`: weekly cargo-audit
+### `audit.yml`: cargo-audit (also nested by ci.yml)
 
 ```yaml
 name: Security Audit
@@ -58,6 +67,10 @@ jobs:
   audit:
     uses: jhheider/rust-ci/.github/workflows/audit.yml@v1
 ```
+
+`ci.yml` already runs this workflow on every push/PR (its `audit` input,
+default true), so wire it directly only when you want a schedule *in addition*
+to the per-push run.
 
 ### `style.yml`: ASCII prose gate (no em/en-dashes)
 

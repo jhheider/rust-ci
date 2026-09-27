@@ -1,0 +1,21 @@
+name: selftest-audit
+
+# Throwaway: dispatch-only harness proving the reusable ci.yml LOADS with its
+# new `audit` input and that the nested audit job validates and starts. rust-ci
+# has no Cargo project, so cargo audit fails at "no lockfile" after startup -
+# same accepted-failure shape as selftest-release: we only care the run gets
+# past validation into the audit job. The behavioural proof lives on throwaway
+# branches: a lockfile with a known-vulnerable crate fails the audit job, a
+# clean one passes.
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  ci-with-audit:
+    uses: ./.github/workflows/ci.yml
+    with:
+      os: '["ubuntu-latest"]'
+      audit: true

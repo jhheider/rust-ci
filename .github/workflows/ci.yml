@@ -44,7 +44,7 @@ on:
         type: number
         default: 4
       runs-on:
-        description: 'Runner for the single-runner jobs (fmt, clippy, coverage). Use "self-hosted" to route a private repo to a self-hosted runner; the test matrix is chosen separately via `os`. Keep the default for public repos (free hosted minutes).'
+        description: 'Runner for the single-runner jobs (fmt, clippy, coverage). A label ("self-hosted"), or a JSON label array ("[\"self-hosted\", \"linux\", \"arm64\"]") to pin the box exactly; a value starting with "[" is read as an array. The test matrix is chosen separately via `os`. Keep the default for public repos (free hosted minutes).'
         type: string
         default: "ubuntu-latest"
       system-packages:
@@ -58,7 +58,7 @@ env:
 jobs:
   fmt:
     name: Rustfmt
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
@@ -69,7 +69,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
@@ -101,7 +101,7 @@ jobs:
   coverage:
     name: Coverage
     if: ${{ inputs.coverage }}
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}
     steps:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
@@ -138,4 +138,4 @@ jobs:
     if: ${{ inputs.audit }}
     uses: ./.github/workflows/audit.yml
     with:
-      runs-on: ${{ inputs.runs-on }}
+      runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}

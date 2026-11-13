@@ -21,7 +21,7 @@ permissions:
 jobs:
   audit:
     name: cargo audit
-    runs-on: ${{ inputs.runs-on }}
+    runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}
     steps:
       - uses: actions/checkout@v7
       - uses: jhheider/rust-ci/actions/setup-rust@v1

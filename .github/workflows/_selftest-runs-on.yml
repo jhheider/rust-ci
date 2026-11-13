@@ -1,0 +1,30 @@
+name: selftest-runs-on
+
+# Self-test for the runs-on input shared by ci.yml, audit.yml and style.yml. A value
+# starting with "[" is read as a JSON label array, anything else as a single label.
+# Each caller expresses that as
+#   runs-on: ${{ startsWith(inputs.runs-on, '[') && fromJSON(inputs.runs-on) || inputs.runs-on }}
+# This job runs the same expression on both shapes, through a matrix so the value is
+# a runtime value, as it is for a caller. A regression in the expression, or in
+# GitHub's handling of an array runs-on, fails here on every PR.
+on:
+  pull_request: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  routes:
+    name: runs-on routes (${{ matrix.shape }})
+    runs-on: ${{ startsWith(matrix.value, '[') && fromJSON(matrix.value) || matrix.value }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shape: a plain label
+            value: ubuntu-latest
+          - shape: a JSON label array
+            value: '["ubuntu-latest"]'
+    steps:
+      - run: echo "routed to ${{ runner.name }} (${{ matrix.shape }})"

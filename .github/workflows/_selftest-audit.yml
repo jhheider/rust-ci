@@ -13,6 +13,12 @@ name: selftest-audit
 #    fails at "no lockfile" after startup: same accepted-failure shape as
 #    _selftest-release, where getting past validation is the point. Dispatch
 #    needs the workflow on the default branch, hence the event split.
+# 3. `ci-with-audit-on-a-label-array` (dispatch-only): the same, with
+#    `runs-on` given as a JSON label array, the form a private repo uses to
+#    pin its self-hosted box. Pass means the nested `cargo audit` job is in
+#    the run's job list. When ci.yml handed audit.yml the array it had already
+#    built, audit.yml's string input refused it: the audit job never started,
+#    every other job passed, and the run was still marked failed.
 #
 # The job-level end-to-end proof (real caller wiring, red on a vulnerable
 # lockfile, green on a clean one) runs on throwaway branches.
@@ -80,4 +86,14 @@ jobs:
     uses: ./.github/workflows/ci.yml
     with:
       os: '["ubuntu-latest"]'
+      audit: true
+
+  # Dispatch-only: the nested audit job must start when runs-on is a label
+  # array. Read the run's job list, not its conclusion. See the header comment.
+  ci-with-audit-on-a-label-array:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+    with:
+      os: '["ubuntu-latest"]'
+      runs-on: '["ubuntu-latest"]'
       audit: true

@@ -38,7 +38,9 @@ jobs:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
           cache: "false"
-      - uses: taiki-e/install-action@cargo-audit
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.2
 
       - name: A known-vulnerable lockfile fails
         run: |

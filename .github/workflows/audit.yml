@@ -27,5 +27,10 @@ jobs:
       - uses: jhheider/rust-ci/actions/setup-rust@v1
         with:
           cache: "false"
-      - uses: taiki-e/install-action@cargo-audit
+      # Pin cargo-audit 0.22.2: 0.23.0 panics in its presenter on a lock with
+      # multiple `syn` majors ("failed to find dependency: syn 3.0.3"), which
+      # htmd 0.6 (syn 3.x) triggers. 0.22.2 parses the same lock cleanly.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit@0.22.2
       - run: cargo audit
